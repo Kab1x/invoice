@@ -139,7 +139,7 @@ export async function generatePdf(data: InvoiceData): Promise<Uint8Array> {
     color: rgb(0.8, 0.8, 0.8),
   });
 
-  currentPage.drawText("TOTAL GÉNÉRAL :", {
+  currentPage.drawText("TOTAL TTC :", {
     x: 300,
     y: currentY - 30,
     size: 14,
