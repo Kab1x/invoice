@@ -1,7 +1,9 @@
+import InvoicePage from "./pages/InvoicePage";
+
 function App() {
   return (
     <>
-      <div>{"Hello World"}</div>
+      <InvoicePage />
     </>
   );
 }
