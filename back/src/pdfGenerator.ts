@@ -1,167 +1,245 @@
-// generatePdf.ts
-import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "pdf-lib";
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  PDFPage,
+  PDFFont,
+  PDFImage,
+} from "pdf-lib";
+import fs from "fs";
+import path from "path";
 
-interface Acte {
-  act_id: string;
-  act_name: string;
-  act_price: number;
-}
+const THEME = {
+  NAVY: rgb(0.01, 0.12, 0.25),
+  ACCENT: rgb(0, 0.45, 0.85),
+  TEXT: rgb(0.1, 0.1, 0.1),
+  GHOST: rgb(0.96, 0.97, 0.98),
+  SLATE: rgb(0.5, 0.5, 0.5),
+};
 
-interface InvoiceData {
-  patient_name: string;
-  invoice_date: string;
-  acts: Acte[];
-}
+const PAGE = { WIDTH: 595, HEIGHT: 842, MARGIN: 45 };
 
-export async function generatePdf(data: InvoiceData): Promise<Uint8Array> {
-  const { patient_name, invoice_date, acts } = data;
+// The long string of services
+const SERVICES_TEXT =
+  "Urgences 24h/24 • Gynécologie-Obstétrique • Accouchements • Chirurgie Générale • Coeliochirurgie • Orthopédie • Traumatologie • Plastique & Esthétique • Réanimation • Laboratoire • Radiologie • IRM • Hémodialyse • Cardiologie • ORL • Neurochirurgie • Pédiatrie • Dermatologie";
 
-  const pdfDoc = await PDFDocument.create();
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+// --- Helper: Simple Text Wrapping ---
+function wrapText(
+  text: string,
+  maxWidth: number,
+  font: PDFFont,
+  fontSize: number,
+) {
+  const words = text.split(" ");
+  const lines = [];
+  let currentLine = "";
 
-  const PAGE_WIDTH = 595;
-  const PAGE_HEIGHT = 842;
-  const MARGIN = 50;
-  const ROW_HEIGHT = 25;
-  const BOTTOM_LIMIT = 80;
-
-  let currentY = PAGE_HEIGHT - MARGIN;
-
-  // Helper pour créer une nouvelle page avec en-tête
-  const createNewPage = (isFirst = false): PDFPage => {
-    const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    currentY = PAGE_HEIGHT - MARGIN;
-
-    if (isFirst) {
-      page.drawText("FACTURE MÉDICALE", {
-        x: MARGIN,
-        y: currentY,
-        size: 20,
-        font: fontBold,
-      });
-      currentY -= 30;
-      page.drawText(`Patient: ${patient_name}`, {
-        x: MARGIN,
-        y: currentY,
-        size: 12,
-        font: fontRegular,
-      });
-      currentY -= 15;
-      page.drawText(`Date: ${invoice_date}`, {
-        x: MARGIN,
-        y: currentY,
-        size: 12,
-        font: fontRegular,
-      });
-      currentY -= 45;
+  words.forEach((word) => {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    if (font.widthOfTextAtSize(testLine, fontSize) < maxWidth) {
+      currentLine = testLine;
     } else {
-      page.drawText(`Suite facture - ${patient_name}`, {
-        x: MARGIN,
-        y: PAGE_HEIGHT - 35,
-        size: 9,
-        font: fontRegular,
-        color: rgb(0.5, 0.5, 0.5),
-      });
-      currentY -= 20;
+      lines.push(currentLine);
+      currentLine = word;
     }
+  });
+  lines.push(currentLine);
+  return lines;
+}
 
-    // En-tête du tableau
-    page.drawRectangle({
-      x: MARGIN,
-      y: currentY - 5,
-      width: 500,
-      height: 20,
-      color: rgb(0.95, 0.95, 0.95),
-    });
-    page.drawText("Désignation de l'acte", {
-      x: MARGIN + 10,
-      y: currentY,
-      size: 10,
-      font: fontBold,
-    });
-    page.drawText("Prix (DZD)", {
-      x: 450,
-      y: currentY,
-      size: 10,
-      font: fontBold,
-    });
-
-    currentY -= ROW_HEIGHT;
-    return page;
+async function loadAssets(pdfDoc: PDFDocument) {
+  const logoPath = path.join(process.cwd(), "src", "assets", "logo.png");
+  return {
+    bold: await pdfDoc.embedFont(StandardFonts.HelveticaBold),
+    reg: await pdfDoc.embedFont(StandardFonts.Helvetica),
+    logo: fs.existsSync(logoPath)
+      ? await pdfDoc.embedPng(fs.readFileSync(logoPath))
+      : null,
   };
+}
 
-  let currentPage = createNewPage(true);
+function drawTopHeader(page: PDFPage, assets: any) {
+  const { reg, bold, logo } = assets;
+  const maxWidth = PAGE.WIDTH - PAGE.MARGIN * 2;
 
-  // Liste des actes
-  acts.forEach((acte, index) => {
-    if (currentY < BOTTOM_LIMIT) {
-      currentPage = createNewPage(false);
-    }
-
-    if (index % 2 === 0) {
-      currentPage.drawRectangle({
-        x: MARGIN,
-        y: currentY - 5,
-        width: 500,
-        height: ROW_HEIGHT,
-        color: rgb(0.98, 0.98, 0.98),
-      });
-    }
-
-    currentPage.drawText(acte.act_name, {
-      x: MARGIN + 10,
-      y: currentY,
-      size: 10,
-      font: fontRegular,
+  // 1. Services Header (Top Block - wrapped properly)
+  const serviceLines = wrapText(SERVICES_TEXT, maxWidth, reg, 7);
+  let serviceY = PAGE.HEIGHT - 25;
+  serviceLines.forEach((line) => {
+    page.drawText(line, {
+      x: PAGE.MARGIN,
+      y: serviceY,
+      size: 7,
+      font: reg,
+      color: THEME.SLATE,
     });
-    currentPage.drawText(acte.act_price.toLocaleString(), {
-      x: 450,
-      y: currentY,
-      size: 10,
-      font: fontRegular,
-    });
-
-    currentY -= ROW_HEIGHT;
+    serviceY -= 10;
   });
 
-  // Section Total
-  if (currentY < BOTTOM_LIMIT + 40) {
-    currentPage = createNewPage(false);
+  // 2. Branding Section (Vertically Centered Logo & Title)
+  const brandingY = serviceY - 45; // Starts below the services block
+  const titleSize = 28;
+
+  if (logo) {
+    const dims = logo.scale(0.35);
+    // Calculating exact vertical midpoint
+    const logoY = brandingY - dims.height / 2;
+    const titleY = brandingY - titleSize / 3; // Adjust for font baseline
+
+    page.drawImage(logo, {
+      x: PAGE.MARGIN,
+      y: logoY,
+      width: dims.width,
+      height: dims.height,
+    });
+
+    const title = "FACTURE";
+    const titleW = bold.widthOfTextAtSize(title, titleSize);
+    page.drawText(title, {
+      x: PAGE.WIDTH - PAGE.MARGIN - titleW,
+      y: titleY,
+      size: titleSize,
+      font: bold,
+      color: THEME.NAVY,
+    });
+
+    return logoY - 50; // New Y for the next section
   }
 
-  const total = acts.reduce((sum, a) => sum + a.act_price, 0);
-  currentY -= 10;
-  currentPage.drawLine({
-    start: { x: MARGIN, y: currentY },
-    end: { x: 550, y: currentY },
-    thickness: 1,
-    color: rgb(0.8, 0.8, 0.8),
+  return brandingY - 40;
+}
+
+export async function generatePdf(data: any): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  const assets = await loadAssets(pdfDoc);
+  let page = pdfDoc.addPage([PAGE.WIDTH, PAGE.HEIGHT]);
+
+  let currentY = drawTopHeader(page, assets);
+
+  // --- Patient Card ---
+  page.drawRectangle({
+    x: PAGE.MARGIN,
+    y: currentY - 50,
+    width: 220,
+    height: 65,
+    color: THEME.GHOST,
+  });
+  page.drawText("PATIENT", {
+    x: PAGE.MARGIN + 12,
+    y: currentY + 3,
+    size: 7,
+    font: assets.bold,
+    color: THEME.ACCENT,
+  });
+  page.drawText(String(data.patient_name || "N/A").toUpperCase(), {
+    x: PAGE.MARGIN + 12,
+    y: currentY - 18,
+    size: 12,
+    font: assets.bold,
+    color: THEME.NAVY,
   });
 
-  currentPage.drawText("TOTAL TTC :", {
-    x: 300,
-    y: currentY - 30,
-    size: 14,
-    font: fontBold,
+  // --- Meta Info (Right Side) ---
+  const metaX = PAGE.WIDTH - PAGE.MARGIN - 110;
+  page.drawText("DATE", {
+    x: metaX,
+    y: currentY,
+    size: 7,
+    font: assets.bold,
+    color: THEME.SLATE,
   });
-  currentPage.drawText(`${total.toLocaleString()} DZD`, {
-    x: 450,
-    y: currentY - 30,
-    size: 14,
-    font: fontBold,
-    color: rgb(0, 0.4, 0.8),
+  page.drawText(data.invoice_date, {
+    x: metaX,
+    y: currentY - 12,
+    size: 10,
+    font: assets.reg,
   });
 
-  // Numérotation des pages
+  currentY -= 100;
+
+  // --- Table Header ---
+  page.drawRectangle({
+    x: PAGE.MARGIN,
+    y: currentY - 5,
+    width: 505,
+    height: 22,
+    color: THEME.NAVY,
+  });
+  page.drawText("DÉSIGNATION", {
+    x: PAGE.MARGIN + 12,
+    y: currentY,
+    size: 8,
+    font: assets.bold,
+    color: rgb(1, 1, 1),
+  });
+  page.drawText("MONTANT (DZD)", {
+    x: 475,
+    y: currentY,
+    size: 8,
+    font: assets.bold,
+    color: rgb(1, 1, 1),
+  });
+
+  currentY -= 25;
+
+  // --- Acts List ---
+  const acts = data.acts || [];
+  acts.forEach((act: any) => {
+    page.drawText(act.act_name, {
+      x: PAGE.MARGIN + 12,
+      y: currentY,
+      size: 10,
+      font: assets.reg,
+    });
+    const price = act.act_price.toLocaleString();
+    const priceW = assets.reg.widthOfTextAtSize(price, 10);
+    page.drawText(price, {
+      x: PAGE.WIDTH - PAGE.MARGIN - priceW - 12,
+      y: currentY,
+      size: 10,
+      font: assets.reg,
+    });
+    currentY -= 22;
+  });
+
+  // --- High Contrast Total Block ---
+  const total = acts.reduce((s: number, a: any) => s + (a.act_price || 0), 0);
+  const totalStr = `${total.toLocaleString()} DZD`;
+
+  currentY -= 30;
+  page.drawRectangle({
+    x: PAGE.WIDTH - PAGE.MARGIN - 190,
+    y: currentY - 40,
+    width: 190,
+    height: 50,
+    color: THEME.NAVY,
+  });
+
+  page.drawText("TOTAL À RÉGLER", {
+    x: PAGE.WIDTH - PAGE.MARGIN - 175,
+    y: currentY - 5,
+    size: 8,
+    font: assets.bold,
+    color: rgb(1, 1, 1),
+  });
+  const totalW = assets.bold.widthOfTextAtSize(totalStr, 18);
+  page.drawText(totalStr, {
+    x: PAGE.WIDTH - PAGE.MARGIN - totalW - 15,
+    y: currentY - 28,
+    size: 18,
+    font: assets.bold,
+    color: rgb(1, 1, 1),
+  });
+
+  // --- Footer Pass: Page Counter ---
   const pages = pdfDoc.getPages();
   pages.forEach((p, i) => {
     p.drawText(`Page ${i + 1} / ${pages.length}`, {
-      x: PAGE_WIDTH / 2 - 20,
+      x: PAGE.WIDTH / 2 - 20,
       y: 25,
       size: 8,
-      font: fontRegular,
-      color: rgb(0.5, 0.5, 0.5),
+      font: assets.reg,
+      color: THEME.SLATE,
     });
   });
 
