@@ -12,7 +12,7 @@ export const api = {
 
   // Envoyer et télécharger le PDF
   downloadPdf: async (payload: InvoicePayload): Promise<void> => {
-    const res = await fetch(`${API_URL}/invoice/pdf`, {
+    const res = await fetch(`${API_URL}/invoices/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

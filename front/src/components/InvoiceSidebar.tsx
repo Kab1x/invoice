@@ -1,23 +1,23 @@
 import React from "react";
-import type { Act as Act, StatutType } from "../types";
+import type { Act as Act, StatusType } from "../types";
 
-interface Props {
-  selectionnes: Act[];
+interface InvoiceSidebarProps {
+  selected: Act[];
   onRemove: (act: Act) => void;
   onValidate: () => void;
   total: number;
   loading: boolean;
-  statut: StatutType;
+  status: StatusType;
   disabled: boolean;
 }
 
-export const InvoiceSidebar: React.FC<Props> = ({
-  selectionnes,
+export const InvoiceSidebar: React.FC<InvoiceSidebarProps> = ({
+  selected,
   onRemove,
   onValidate,
   total,
   loading,
-  statut,
+  status,
   disabled,
 }) => (
   <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl sticky top-8">
@@ -25,7 +25,7 @@ export const InvoiceSidebar: React.FC<Props> = ({
       Résumé
     </h2>
     <div className="space-y-3 mb-8 max-h-[300px] overflow-y-auto">
-      {selectionnes.map((acte) => (
+      {selected.map((acte) => (
         <div key={acte.act_id} className="flex justify-between text-sm">
           <span className="text-slate-400 truncate flex-1">
             {acte.act_name}
@@ -49,11 +49,11 @@ export const InvoiceSidebar: React.FC<Props> = ({
     >
       {loading ? "Génération..." : "Télécharger PDF"}
     </button>
-    {statut.message && (
+    {status.message && (
       <div
-        className={`mt-4 p-2 rounded text-center text-xs ${statut.type === "erreur" ? "text-red-400" : "text-green-400"}`}
+        className={`mt-4 p-2 rounded text-center text-xs ${status.type === "erreur" ? "text-red-400" : "text-green-400"}`}
       >
-        {statut.message}
+        {status.message}
       </div>
     )}
   </div>

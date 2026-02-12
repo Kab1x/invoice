@@ -1,4 +1,4 @@
-export interface Acte {
+export interface Act {
   act_id: string;
   act_name: string;
   act_price: number;
@@ -7,5 +7,5 @@ export interface Acte {
 export interface InvoiceData {
   patient_name: string;
   invoice_date: string;
-  acts: Acte[];
+  acts: Act[];
 }

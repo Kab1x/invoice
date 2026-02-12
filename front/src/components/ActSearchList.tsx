@@ -5,7 +5,7 @@ interface Props {
   actes: Act[];
   selectionnes: Act[];
   onToggle: (act: Act) => void;
-  recherche: string;
+  search: string;
   onSearchChange: (val: string) => void;
 }
 
@@ -13,7 +13,7 @@ export const ActSearchList: React.FC<Props> = ({
   actes,
   selectionnes,
   onToggle,
-  recherche,
+  search: recherche,
   onSearchChange,
 }) => (
   <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">

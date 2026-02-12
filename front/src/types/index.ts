@@ -6,11 +6,10 @@ export interface Act {
 
 export interface InvoicePayload {
   patient_name: string;
-  invoice_date: string;
   acts: Act[];
 }
 
-export type StatutType = {
+export type StatusType = {
   type: "succès" | "erreur" | "";
   message: string;
 };

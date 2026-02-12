@@ -1,4 +1,4 @@
-const catalogueActes = [
+const allActs = [
   // CONSULTATIONS & VISITES
   { act_id: "C1", act_name: "Consultation Médecine Générale", act_price: 2000 },
   { act_id: "C2", act_name: "Consultation Spécialisée", act_price: 3500 },
@@ -173,4 +173,4 @@ const catalogueActes = [
   { act_id: "REA2", act_name: "Séance d'orthophonie", act_price: 2000 },
   { act_id: "REA3", act_name: "Bilan orthoptique", act_price: 3500 },
 ];
-export default catalogueActes;
+export default allActs;
